@@ -16,10 +16,6 @@ class User(Document):
     name = StringField(required=True)
     email = EmailField()
 
-@app.route('/users')
-def user():
-    return "User found."
-
 @app.route('/')
 def create_user():
     user = User(name='Hatim', email='john@example.com')
