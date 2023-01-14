@@ -1,11 +1,15 @@
-from flask import Flask
-from mongoengine import connect, Document, Q
-from mongoengine.errors import NotUniqueError, ValidationError
+import os
+from flask import Flask, request
+from mongoengine import connect
 from mongoengine.fields import *
+from mongoengine.errors import NotUniqueError
+from flask_cors import CORS
+from pubmed import open_article
 
 from models import Article, Citation, Reference
 
 app = Flask(__name__)
+CORS(app, origins=["http://localhost:3000"])
 
 db = connect(
     db='Articles',
@@ -13,6 +17,33 @@ db = connect(
     password='#Food123',
     host='mongodb+srv://cluster0.gkdshl2.mongodb.net/'
 )
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    try:
+        print("upload function")
+        file = request.files['file']
+        if file:
+            filename = file.filename
+            schema = open_article(file)
+            try:
+                article = Article(**schema)
+                article.save()
+                
+            except NotUniqueError:
+                # Handle the error
+                print("Article with doi '{}' already exists".format(article.doi))
+
+            except Exception as e:
+                # Roll back the changes
+                print(e)
+            return 'File uploaded successfully'
+        else:
+            return 'No file found'
+    except Exception as e:
+        print("Error: ", e)
+        print("Request: ", request)
+        return 'An error occurred while uploading the file', 400
 
 @app.route('/')
 def article():
@@ -60,66 +91,4 @@ def article():
 
 if __name__ == '__main__':
     app.run()
-
-
-# @app.route('/createuser')
-# def create():
-#     # Start a session
-#     session = db.start_session()
-
-#     # Define the transaction
-#     with session.start_transaction():
-#         # Create the user
-#         user = User(name='John Smith',
-#                     email='john@example.com',
-#                     password='password',
-#                     image='https://example.com/john.jpg',
-#                     places=[])
-#         try:
-#             user.save()
-#             print("User saved...")
-#         except (NotUniqueError, ValidationError) as e:
-#             # Handle errors
-#             session.abort_transaction()
-#             print(e)
-#             raise e
-
-#         # Create the place
-#         place = Place(title='Eiffel Tower',
-#                       description='Iconic tower in Paris',
-#                       image='https://example.com/eiffel-tower.jpg',
-#                       address='Champ de Mars, 5 Avenue Anatole France, 75007 Paris, France',
-#                     #   location={'lat': 48.8584, 'lng': 2.2945},
-#                       creator=user.id)
-#         try:
-#             place.save()
-#             print("Place saved...")
-#         except (NotUniqueError, ValidationError) as e:
-#             # Handle errors
-#             session.abort_transaction()
-#             print(e)
-#             raise e
-
-#         # Update the user's places field
-#         user.update(push__places=place.id)
-
-#     # End the session
-#     session.end_session()
-
-#     return 'Success'
-
-
-# client = pymongo.MongoClient(CONNECTION_STRING)
-# db = client.get_database('flask_mongodb_atlas')
-# user_collection = pymongo.collection.Collection(db, 'user_collection')
-
-
-
-# @app.route('/')
-# # ‘/’ URL is bound with hello_world() function.
-# def hello_world():
-#     db.collection.insert_one({"name": "aiman"})
-#     print(db)
-#     return "Successful"
-
 
