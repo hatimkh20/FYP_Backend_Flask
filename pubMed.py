@@ -509,9 +509,10 @@ def scoring(reference_schema, ref_freq_median, ref_freq_3rd_quarter):
 """### Open Article"""
 
 def open_article(file_path):
-  article = open(file_path, 'r', encoding='utf-8')
+  #article = open(file_path, 'r', encoding='utf-8')
   xml_parser = etree.XMLParser(remove_blank_text=True)
   xml_tree = etree.parse(file_path, xml_parser)
+  #xml_tree = etree.tostring(file)
   front = xml_tree.xpath("//front")
   front = front[0]
   try:

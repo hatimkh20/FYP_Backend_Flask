@@ -25,10 +25,17 @@ def upload():
         file = request.files['file']
         if file:
             filename = file.filename
-            schema = open_article(file)
+            file_path = os.path.join(os.getcwd(), filename)
+            file.save(file_path)
+            print("File saved to directory")
+            schema = open_article(file_path)
+            print("Schema return")
+            os.remove(file_path)
+            print("file removed from directory")
             try:
                 article = Article(**schema)
                 article.save()
+                print("saved in DB")
                 
             except NotUniqueError:
                 # Handle the error
