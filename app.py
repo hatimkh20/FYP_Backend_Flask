@@ -1,8 +1,8 @@
 import os
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from mongoengine import connect
 from mongoengine.fields import *
-from mongoengine.errors import NotUniqueError
+from mongoengine.errors import NotUniqueError, DoesNotExist
 from flask_cors import CORS
 from pubmed import open_article
 
@@ -17,85 +17,61 @@ db = connect(
     password='#Food123',
     host='mongodb+srv://cluster0.gkdshl2.mongodb.net/'
 )
-
 @app.route('/upload', methods=['POST'])
 def upload():
     try:
         print("upload function")
-        file = request.files['file']
-        if file:
-            filename = file.filename
-            file_path = os.path.join(os.getcwd(), filename)
-            file.save(file_path)
-            print("File saved to directory")
-            schema = open_article(file_path)
-            print("Schema return")
-            os.remove(file_path)
-            print("file removed from directory")
-            try:
-                article = Article(**schema)
-                article.save()
-                print("saved in DB")
-                
-            except NotUniqueError:
-                # Handle the error
-                print("Article with doi '{}' already exists".format(article.doi))
+        file = request.files.get('file')
+        if not file:
+            return jsonify({"error": "No file found"}), 400
 
-            except Exception as e:
-                # Roll back the changes
-                print(e)
-            return 'File uploaded successfully'
-        else:
-            return 'No file found'
+        if not file.filename.endswith(('json')):
+            return jsonify({"error": "Invalid file type"}), 400
+
+        file_path = os.path.join(os.getcwd(), file.filename)
+        file.save(file_path)
+        print("File saved to directory")
+        schema = open_article(file_path)
+        print("Schema return")
+        os.remove(file_path)
+        print("file removed from directory")
+
+        try:
+            article = Article(**schema)
+            article.save()
+            print("saved in DB")
+
+        except NotUniqueError:
+            # Handle the error
+            print("Article with doi '{}' already exists".format(article.doi))
+            return jsonify({"error": "Article with doi '{}' already exists".format(article.doi)}), 400
+
+        except Exception as e:
+            # Roll back the changes
+            print(e)
+            return jsonify({"error": str(e)}), 500
+        return jsonify({"message": "File uploaded successfully"}), 201
+
     except Exception as e:
         print("Error: ", e)
-        print("Request: ", request)
-        return 'An error occurred while uploading the file', 400
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/')
-def article():
-    session = db.start_session()
-    
-    # Start the session
-    session.start_transaction()
 
+@app.route("/search", methods=["GET"])
+def search():
     try:
-        # Save the article
-        article = Article(doi='10.7717/peerj-cs.421',
-                        article_title='A systematic metadata harvesting workflow for analysing scientific networks',
-                        journal_title='PeerJ Computer Science',
-                        publisher_name='PeerJ Inc.',
-                        publish_date='9-2-2021',
-                        references=[])
-        article.save(session=session)
-
-        # Save the reference
-        reference = Reference(id='ref-2',
-                            ref_author='AlNoamany, Borghi',
-                            ref_text='Al N oamany Y Borghi J A Towards computational reproducibility: researcher perspectives on the use and sharing of software Peer J Computer Science 2018 4 7317 e163 10.7717/peerj-cs.163',
-                            ref_article_title='Towards computational reproducibility: researcher perspectives on the use and sharing of software',
-                            citations=[Citation(citation_section='Introduction',
-                                            citation_context='journals or a subject category. One such analysis is the identification of prominent authors (gurus).',
-                                            citation_text='Python is used based on its popularity with researchers as per survey results by AlNoamany & Borghi (2018).')],
-                            syntactic_frequency='1')
-        article.references.append(reference)
-        article.save(session=session)
-
-        # Commit the changes
-        session.commit_transaction()
-
-        print("Successful..")
-
+        query = request.args.get("query")
+        if not query:
+            return jsonify({"error": "query parameter is missing"}), 400
+        articles = Article.objects.search_text(query).limit(10).to_json()
+        # if articles.count() == 0:
+        #     return jsonify({"error": "No articles found"}), 404
+        return articles, 200, { 'Content-Type': 'application/json' }
+    except DoesNotExist as e:
+        return jsonify({"error": str(e)}), 404
     except Exception as e:
-        # Roll back the changes
-        session.abort_transaction()
-        print(e)
+        return jsonify({"error": str(e)}), 500
 
-    # End the session
-    session.end_session()
-
-    return 'Success'
 
 if __name__ == '__main__':
     app.run()
-
