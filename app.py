@@ -40,6 +40,7 @@ def upload():
             article = Article(**schema)
             article.save()
             print("saved in DB")
+            return schema, 201
 
         except NotUniqueError:
             # Handle the error
@@ -50,7 +51,6 @@ def upload():
             # Roll back the changes
             print(e)
             return jsonify({"error": str(e)}), 500
-        return jsonify({"message": "File uploaded successfully"}), 201
 
     except Exception as e:
         print("Error: ", e)
