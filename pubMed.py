@@ -22,7 +22,7 @@ nltk.download("punkt")
 db = connect(
     db='Articles',
     username='Categorising_in_text_Citations',
-    password='#Food123',
+    password='#Pasta123',
     host='mongodb+srv://cluster0.gkdshl2.mongodb.net/'
 )
 
