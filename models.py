@@ -30,6 +30,7 @@ class Citation(EmbeddedDocument):
 class Article(Document):
     doi = StringField(required=True, pk=True, unique=True)
     article_title = StringField(required=True)
+    abstract = StringField()
     journal_title = StringField()
     publisher_name = StringField()
     publish_date = StringField()

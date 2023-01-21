@@ -90,21 +90,21 @@ def find_Authors(front):
     author_names = author_names.split(", ")
     return author_names
 
-# def find_Abstract(front):
-#     abstract = xml_tree.xpath(".//abstract")[0]
-#     abstract = etree.tostring(abstract, method='text', encoding='unicode')
-#     return abstract
+def find_Abstract(front, xml_tree):
+    abstract = xml_tree.xpath(".//abstract")[0]
+    abstract = etree.tostring(abstract, method='text', encoding='unicode')
+    return abstract
 
-def find_Metadata(front):
+def find_Metadata(front, xml_tree):
     doi = find_DOI(front[1])
     title = find_Title(front)
     journal = find_Journal(front)
     publisher = find_Publisher(front)
     publish_date = find_Publish_Date(front)
     authors = find_Authors(front)
-    #abstract = find_Abstract(front)
+    abstract = find_Abstract(front, xml_tree)
     
-    return doi, title, journal,publisher, publish_date, authors
+    return doi, title, journal,publisher, publish_date, authors, abstract
 
 """### Article Section Lengths"""
 
@@ -508,60 +508,58 @@ def scoring(reference_schema, ref_freq_median, ref_freq_3rd_quarter):
 
 """### Open Article"""
 
-def open_article(file_path):
-  #article = open(file_path, 'r', encoding='utf-8')
-  xml_parser = etree.XMLParser(remove_blank_text=True)
-  xml_tree = etree.parse(file_path, xml_parser)
-  #xml_tree = etree.tostring(file)
-  front = xml_tree.xpath("//front")
-  front = front[0]
-  try:
-      doi, title, journal, publisher, publish_date, authors = find_Metadata(front)
-  except Exception as e:
-      print(e)
-  print("Meta Data found.")
-  crossref_response = find_CrossRef_Response(doi)
+def open_article(file_path): 
+    article = open(file_path, 'r', encoding='utf-8')
+    xml_parser = etree.XMLParser(remove_blank_text=True)
+    xml_tree = etree.parse(file_path, xml_parser)
+    front = xml_tree.xpath("//front")
+    front = front[0]
+    try:
+        doi, title, journal, publisher, publish_date, authors, abstract = find_Metadata(front, xml_tree)
+        body = xml_tree.xpath("//body")
+        body = body[0]
 
-  body = xml_tree.xpath("//body")
-  body = body[0]
+        article_text_length, introduction_length, method_length, result_length, discussion_length = get_Article_Length(body)
+        print("Article length found")
 
-  article_text_length, introduction_length, method_length, result_length, discussion_length = get_Article_Length(body)
-  print("Article length found")
+        sections = get_Article_Sections(body, introduction_length, method_length, result_length, discussion_length)
 
-  sections = get_Article_Sections(body, introduction_length, method_length, result_length, discussion_length)
+        citation_schema = extract_Citation_Schema(body, sections)
+        print("Extracted Citation Schema")
 
-  citation_schema = extract_Citation_Schema(body, sections)
-  print("Extracted Citation Schema")
+        citation_schema = get_Citance_Count(citation_schema)
 
-  citation_schema = get_Citance_Count(citation_schema)
+        reference_schema = extract_Reference_Schema(body)
+        print("Extracted Reference Schema")
 
-  reference_schema = extract_Reference_Schema(body)
-  print("Extracted Reference Schema")
+        reference_schema = merge_Reference_Schema(citation_schema, reference_schema)
 
-  reference_schema = merge_Reference_Schema(citation_schema, reference_schema)
+        reference_schema, ref_freq_median, ref_freq_3rd_quarter = find_Reference_Frequency(reference_schema)
 
-  reference_schema, ref_freq_median, ref_freq_3rd_quarter = find_Reference_Frequency(reference_schema)
+        print("Sentiment...")
+        reference_schema = find_Sentiment(reference_schema)
 
-  print("Sentiment...")
-  reference_schema = find_Sentiment(reference_schema)
+        reference_schema = scoring(reference_schema, ref_freq_median, ref_freq_3rd_quarter)
+        print("Scoring done")
 
-  reference_schema = scoring(reference_schema, ref_freq_median, ref_freq_3rd_quarter)
-  print("Scoring done")
+        schema = {
+        "doi": doi,
+        "article_title": title,
+        "abstract": abstract,
+        "journal_title": journal,
+        "publisher_name": publisher,
+        "publish_date": publish_date,
+        "article_authors": authors,
+        #"total_citations": len(citation_schema),
+        #"total_references": len(reference_schema),
+        "references": reference_schema
+        }
+        return schema
 
-  schema = {
-    "doi": doi,
-    "article_title": title,
-    #"abstract": abstract,
-    "journal_title": journal,
-    "publisher_name": publisher,
-    "publish_date": publish_date,
-    "article_authors": authors,
-    #"total_citations": len(citation_schema),
-    #"total_references": len(reference_schema),
-    "references": reference_schema
-  }
-
-  return schema
+    except Exception as e:
+        print(e)
+        return {'error': e.message}
+  #return schema
 
 
 # Commented out IPython magic to ensure Python compatibility.
