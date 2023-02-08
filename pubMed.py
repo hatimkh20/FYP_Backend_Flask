@@ -17,15 +17,6 @@ from mongoengine.errors import NotUniqueError
 
 nltk.download("punkt")
 
-"""### MongoDB Connection"""
-
-db = connect(
-    db='Articles',
-    username='Categorising_in_text_Citations',
-    password='#Pasta123',
-    host='mongodb+srv://cluster0.gkdshl2.mongodb.net/'
-)
-
 """### Load Model for Sentiment Analysis"""
 
 SENTIMENT_MODEL = pipeline(model="cardiffnlp/twitter-roberta-base-sentiment")
