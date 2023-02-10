@@ -64,6 +64,7 @@ def search():
         if not query:
             return jsonify({"error": "query parameter is missing"}), 400
         articles = Article.objects.search_text(query).limit(10).to_json()
+        
         # if articles.count() == 0:
         #     return jsonify({"error": "No articles found"}), 404
         return articles, 200, { 'Content-Type': 'application/json' }
