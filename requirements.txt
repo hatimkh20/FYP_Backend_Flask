@@ -10,7 +10,7 @@ dnspython==2.2.1
 filelock==3.9.0
 Flask==2.2.2
 Flask-Cors==3.0.10
-flatbuffers==1.12
+flatbuffers==2.0.0
 gast==0.3.3
 google-auth==2.16.0
 google-auth-oauthlib==0.4.6
