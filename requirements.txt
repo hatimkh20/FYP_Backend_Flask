@@ -20,4 +20,4 @@ tensorflow
 tokenizers
 transformers
 urllib3
-gunicorn
+guvicorn
