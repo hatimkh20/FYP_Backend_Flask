@@ -2,7 +2,6 @@
 from lxml import etree
 import numpy as np
 import pandas as pd
-from nltk import tokenize
 import nltk
 from pprint import pprint
 import re
@@ -21,7 +20,7 @@ else:
     tf.config.set_visible_devices(physical_devices[0], 'GPU')
     print("Using GPU:", physical_devices[0].name)
 
-nltk.download("punkt")
+#nltk.download("punkt")
 
 """### Load Model for Sentiment Analysis"""
 
