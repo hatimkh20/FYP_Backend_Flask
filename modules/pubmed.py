@@ -2,16 +2,12 @@
 from lxml import etree
 import numpy as np
 import pandas as pd
-import json
 from nltk import tokenize
 import nltk
-import string
-import math
 from pprint import pprint
 import re
 from transformers import pipeline
 import requests
-import traceback
 from mongoengine import connect
 from mongoengine.errors import NotUniqueError
 
