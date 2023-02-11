@@ -1,21 +1,22 @@
-# import os
-# from flask import Flask, request, jsonify
-# from mongoengine import connect
-# from mongoengine.fields import *
-# from mongoengine.errors import NotUniqueError, DoesNotExist
-# from flask_cors import CORS
-# from modules.pubmed import open_article
-# from models.models import Article
+import os
+from flask import Flask, request, jsonify
+from mongoengine import connect
+from mongoengine.fields import *
+from mongoengine.errors import NotUniqueError, DoesNotExist
+from flask_cors import CORS
+#from modules.pubmed import open_article
+from models.models import Article
 
-# app = Flask(__name__)
-# CORS(app, origins=["http://localhost:3000"])
+app = Flask(__name__)
+CORS(app, origins=["http://localhost:3000"])
 
-# db = connect(
-#     db='Articles',
-#     username='Categorising_in_text_Citations',
-#     password='#Food123',
-#     host='mongodb+srv://cluster0.gkdshl2.mongodb.net/'
-# )
+db = connect(
+    db='Articles',
+    username='Categorising_in_text_Citations',
+    password='#Food123',
+    host='mongodb+srv://cluster0.gkdshl2.mongodb.net/'
+)
+
 # @app.route('/upload', methods=['POST'])
 # def upload():
 #     try:
@@ -56,33 +57,33 @@
 #         return jsonify({"error": str(e)}), 500
 
 
-# @app.route("/search", methods=["GET"])
-# def search():
-#     try:
-#         query = request.args.get("query")
-#         if not query:
-#             return jsonify({"error": "query parameter is missing"}), 400
-#         articles = Article.objects.search_text(query).limit(10).to_json()
+@app.route("/search", methods=["GET"])
+def search():
+    try:
+        query = request.args.get("query")
+        if not query:
+            return jsonify({"error": "query parameter is missing"}), 400
+        articles = Article.objects.search_text(query).limit(10).to_json()
         
-#         # if articles.count() == 0:
-#         #     return jsonify({"error": "No articles found"}), 404
-#         return articles, 200, { 'Content-Type': 'application/json' }
-#     except DoesNotExist as e:
-#         return jsonify({"error": str(e)}), 404
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+        # if articles.count() == 0:
+        #     return jsonify({"error": "No articles found"}), 404
+        return articles, 200, { 'Content-Type': 'application/json' }
+    except DoesNotExist as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-
-# if __name__ == '__main__':
-#     app.run()
-
-
-from flask import Flask
-app = Flask(__name__)
-
-@app.route("/")
-def hello():
-    return "Hello, World!"
 
 if __name__ == '__main__':
     app.run()
+
+
+# from flask import Flask
+# app = Flask(__name__)
+
+# @app.route("/")
+# def hello():
+#     return "Hello, World!"
+
+# if __name__ == '__main__':
+#     app.run()
