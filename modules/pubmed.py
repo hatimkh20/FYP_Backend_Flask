@@ -10,12 +10,26 @@ from transformers import pipeline
 import requests
 from mongoengine import connect
 from mongoengine.errors import NotUniqueError
+import tensorflow as tf
+
+physical_devices = tf.config.list_physical_devices('GPU')
+
+if len(physical_devices) == 0:
+    print("No GPU found, using CPU instead")
+    tf.config.set_visible_devices([], 'GPU')
+else:
+    tf.config.set_visible_devices(physical_devices[0], 'GPU')
+    print("Using GPU:", physical_devices[0].name)
 
 nltk.download("punkt")
 
 """### Load Model for Sentiment Analysis"""
 
-SENTIMENT_MODEL = pipeline(model="cardiffnlp/twitter-roberta-base-sentiment")
+try:
+    SENTIMENT_MODEL = pipeline(model="cardiffnlp/twitter-roberta-base-sentiment")
+except Exception as e:
+    print("Error occurred while loading the sentiment model:", e)
+    SENTIMENT_MODEL = None
 
 """### Cross-ref Response """
 
