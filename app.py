@@ -1,4 +1,5 @@
 import os
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 from flask import Flask, request, jsonify
 from mongoengine import connect
 from mongoengine.fields import *
