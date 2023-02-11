@@ -4,8 +4,8 @@ from mongoengine import connect
 from mongoengine.fields import *
 from mongoengine.errors import NotUniqueError, DoesNotExist
 from flask_cors import CORS
-from .modules.pubmed import open_article
-from .models import Article
+from modules.pubmed import open_article
+from models.models import Article
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"])
