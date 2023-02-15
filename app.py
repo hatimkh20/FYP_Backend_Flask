@@ -1,3 +1,4 @@
+import json
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 from flask import Flask, request, jsonify
@@ -64,27 +65,33 @@ def search():
         query = request.args.get("query")
         if not query:
             return jsonify({"error": "query parameter is missing"}), 400
-        articles = Article.objects.search_text(query).limit(10).to_json()
-        
-        # if articles.count() == 0:
-        #     return jsonify({"error": "No articles found"}), 404
-        return articles, 200, { 'Content-Type': 'application/json' }
+        articles = Article.objects.search_text(query).limit(20)
+        reduced_articles = []
+        for article in articles:
+            article = json.loads(article.to_json())
+            reduced_articles.append({
+                "id": article["_id"]["$oid"],
+                "title": article["article_title"],
+                "doi": article["doi"]
+    })
+        return jsonify(reduced_articles), 200, { 'Content-Type': 'application/json' }
     except DoesNotExist as e:
         return jsonify({"error": str(e)}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/article/<article_id>", methods=["GET"])
+def get_article(article_id):
+    try:
+        if not article_id:
+            return jsonify({"error": "article id is missing"}), 400
+        article = Article.objects.get(id=article_id)
+        return article.to_json(), 200, { 'Content-Type': 'application/json' }
+    except DoesNotExist as e:
+        return jsonify({"error": "Article not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run()
-
-
-# from flask import Flask
-# app = Flask(__name__)
-
-# @app.route("/")
-# def hello():
-#     return "Hello, World!"
-
-# if __name__ == '__main__':
-#     app.run()
