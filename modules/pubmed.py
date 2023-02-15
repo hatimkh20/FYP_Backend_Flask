@@ -2,33 +2,25 @@
 from lxml import etree
 import numpy as np
 import pandas as pd
-import json
-from nltk import tokenize
 import nltk
-import string
-import math
 from pprint import pprint
 import re
-from transformers import pipeline
+# from transformers import pipeline
 import requests
-import traceback
 from mongoengine import connect
 from mongoengine.errors import NotUniqueError
 
-nltk.download("punkt")
-
-"""### MongoDB Connection"""
-
-db = connect(
-    db='Articles',
-    username='Categorising_in_text_Citations',
-    password='#Food123',
-    host='mongodb+srv://cluster0.gkdshl2.mongodb.net/'
-)
+#nltk.download("punkt")
 
 """### Load Model for Sentiment Analysis"""
 
-SENTIMENT_MODEL = pipeline(model="cardiffnlp/twitter-roberta-base-sentiment")
+# try:
+#     SENTIMENT_MODEL = pipeline(model="cardiffnlp/twitter-roberta-base-sentiment")
+# except Exception as e:
+#     print("Error occurred while loading the sentiment model:", e)
+#     SENTIMENT_MODEL = None
+
+SENTIMENT_MODEL = None
 
 """### Cross-ref Response """
 
