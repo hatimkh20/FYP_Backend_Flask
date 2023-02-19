@@ -5,22 +5,21 @@ import pandas as pd
 import nltk
 from pprint import pprint
 import re
-# from transformers import pipeline
+from transformers import pipeline
 import requests
 from mongoengine import connect
 from mongoengine.errors import NotUniqueError
 
-#nltk.download("punkt")
+from models.models import Article
+
+nltk.download("punkt")
 
 """### Load Model for Sentiment Analysis"""
-
-# try:
-#     SENTIMENT_MODEL = pipeline(model="cardiffnlp/twitter-roberta-base-sentiment")
-# except Exception as e:
-#     print("Error occurred while loading the sentiment model:", e)
-#     SENTIMENT_MODEL = None
-
-SENTIMENT_MODEL = None
+try:
+    SENTIMENT_MODEL = pipeline(model="cardiffnlp/twitter-roberta-base-sentiment")
+except Exception as e:
+    print("Error occurred while loading the sentiment model:", e)
+    SENTIMENT_MODEL = None
 
 """### Cross-ref Response """
 
@@ -39,16 +38,18 @@ def find_DOI(article_meta):
             continue
 
 def find_Title(front):
-    title = front.findall('.//article-title')
-    return title[0].text
+    title = front.findall('.//article-title')[0]
+    article_title = etree.tostring(title, method='text', encoding='unicode')
+    return article_title
 
 def find_Journal(front):
     journal_title= front.findall('.//journal-title')
     return journal_title[0].text
 
 def find_Publisher(front):
-    publisher_name = front.findall('.//publisher-name')
-    return publisher_name[0].text
+    publisher = front.findall('.//publisher-name')[0]
+    publisher_name = etree.tostring(publisher, method='text', encoding='unicode')
+    return publisher_name
 
 def find_Publish_Date(front):
     pub_date = front.findall('.//history')[0]
@@ -90,13 +91,32 @@ def find_Abstract(front, xml_tree):
 def find_Metadata(front, xml_tree):
     doi = find_DOI(front[1])
     title = find_Title(front)
-    journal = find_Journal(front)
-    publisher = find_Publisher(front)
-    publish_date = find_Publish_Date(front)
-    authors = find_Authors(front)
-    abstract = find_Abstract(front, xml_tree)
+    try:
+      journal = find_Journal(front)
+    except:
+      journal = None
+
+    try:
+      publisher = find_Publisher(front)
+    except:
+      publisher = None
+
+    try:
+      publish_date = find_Publish_Date(front)
+    except:
+      publish_date = None
     
-    return doi, title, journal,publisher, publish_date, authors, abstract
+    try:
+      authors = find_Authors(front)
+    except:
+      authors = None
+    
+    try:
+      abstract = find_Abstract(front, xml_tree)
+    except:
+      abstract = None
+      
+    return doi, title, journal, publisher, publish_date, authors, abstract
 
 """### Article Section Lengths"""
 
@@ -137,8 +157,7 @@ def get_Article_Sections(body,introduction_length, method_length, result_length,
 
 """### Citation Schema
 
-#### Section Name
-"""
+#### Section Name """
 
 def verify_section(section_name, sections):
     for i in sections:
@@ -247,12 +266,7 @@ def extract_Citation_Schema(body, sections):
     prev_context= None
     for citation in citations:            
         citation_mark = etree.tostring(citation, method='text', encoding='unicode')
-        # try:
-        #     citation_style = re.findall('(.+\d{4})', citation_mark)[0]
-            
-        # except:
-        #     citation_style = citation_mark[:4]
-            
+        
         #Extracting the citation context
         context = etree.tostring(citation.getparent(), method='text', encoding='unicode') #citation paragraph
     
@@ -322,10 +336,6 @@ def get_Reference_DOI(reference):
       if id.attrib['pub-id-type'] == 'doi':
         doi = id.text
         break
-    # try:
-    #     doi = etree.tostring(doi[0], method='text', encoding='unicode')
-    # except:
-    #     doi = ''
     
     reference_count = None
     if doi != '':
@@ -398,11 +408,14 @@ def merge_Reference_Schema(citation_schema, reference_schema):
                 reference['citations'].append(citation)
                 
                 reference[citation['citation_section']] += 1
-                
+
+    references_having_citation = []            
     for reference in reference_schema:
-      if len(reference['citations']) == 0:
-        reference_schema.remove(reference)
-    return reference_schema
+      if len(reference['citations']) != 0:
+        references_having_citation.append(reference)
+        
+    return references_having_citation
+
 
 def find_Reference_Frequency(reference_schema):
     reference_frequencies = []
@@ -430,7 +443,6 @@ def find_Sentiment(reference_schema):
                 citation['sentiment'] = sentiment_score
             else:
                 citation['sentiment'] = 0
-            
             
     return reference_schema
 
@@ -498,9 +510,15 @@ def scoring(reference_schema, ref_freq_median, ref_freq_3rd_quarter):
     
     return reference_schema
 
-"""### Open Article"""
+def check_Article_Uploaded(doi):
+    try:
+        article = Article.objects.get(doi=doi)
+        return True
+    except Article.DoesNotExist:
+        return False
 
-def open_article(file_path): 
+"""### Open Article"""
+def open_article(file_path):
     article = open(file_path, 'r', encoding='utf-8')
     xml_parser = etree.XMLParser(remove_blank_text=True)
     xml_tree = etree.parse(file_path, xml_parser)
@@ -508,6 +526,11 @@ def open_article(file_path):
     front = front[0]
     try:
         doi, title, journal, publisher, publish_date, authors, abstract = find_Metadata(front, xml_tree)
+
+        if check_Article_Uploaded(doi) == True:
+            print("Article with doi '{}' already exists".format(doi))
+            return doi
+
         body = xml_tree.xpath("//body")
         body = body[0]
 
@@ -515,7 +538,8 @@ def open_article(file_path):
         print("Article length found")
 
         sections = get_Article_Sections(body, introduction_length, method_length, result_length, discussion_length)
-
+        print("Article Sections found")
+        
         citation_schema = extract_Citation_Schema(body, sections)
         print("Extracted Citation Schema")
 
@@ -527,9 +551,10 @@ def open_article(file_path):
         reference_schema = merge_Reference_Schema(citation_schema, reference_schema)
 
         reference_schema, ref_freq_median, ref_freq_3rd_quarter = find_Reference_Frequency(reference_schema)
+        print("Reference Frequency found.")
 
-        print("Sentiment...")
         reference_schema = find_Sentiment(reference_schema)
+        print("Sentiment done.")
 
         reference_schema = scoring(reference_schema, ref_freq_median, ref_freq_3rd_quarter)
         print("Scoring done")
@@ -546,38 +571,12 @@ def open_article(file_path):
         #"total_references": len(reference_schema),
         "references": reference_schema
         }
+        
         return schema
 
     except Exception as e:
         print(e)
         return {'error': e.message}
-  #return schema
-
-
-# Commented out IPython magic to ensure Python compatibility.
-# %%time
-# import os
-# 
-# folder_path = 'dataset/'
-# 
-# for file_name in os.listdir(folder_path):
-#     file_path = os.path.join(folder_path, file_name)
-#     if os.path.isfile(file_path):
-#         print("Article open: ", file_name)
-#         try:
-#           open_article(file_path)
-#           print("Article succesfully uploaded.")
-#           print("-----------------------------")
-#         except:
-#           print("Article failed: ", file_path)
-#           print(traceback.format_exc())
-#           continue
-# #root = 'peerj-cs-490.xml'
-
-# try:
-#   schema = open_article('peerj-cs-490.xml')
-# except:
-#   print("Article failed:")
 
 
 

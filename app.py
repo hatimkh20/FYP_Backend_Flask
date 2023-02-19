@@ -36,28 +36,33 @@ def upload():
         schema = open_article(file_path)
         print("Schema return")
         os.remove(file_path)
-        print("file removed from directory")
+        print("File removed from directory")
 
-        try:
+        if isinstance(schema, str):
+            # schema is a DOI, return it
+            return jsonify({"doi": schema}), 200
+        else:
+            # schema is an article object, save it and return its DOI
             article = Article(**schema)
-            article.save()
-            print("saved in DB")
-            return schema, 201
+            existing_article = Article.objects(doi=article.doi).first()
+            if existing_article:
+                return jsonify({"doi": existing_article.doi}), 200
+            else:
+                article.save()
+                article.reload()
+                if not article.doi:
+                    return jsonify({"error": "Failed to save article"}), 500
+                return jsonify({"doi": article.doi}), 201
 
-        except NotUniqueError:
-            # Handle the error
-            print("Article with doi '{}' already exists".format(article.doi))
-            return jsonify({"error": "Article with doi '{}' already exists".format(article.doi)}), 400
-
-        except Exception as e:
-            # Roll back the changes
-            print(e)
-            return jsonify({"error": str(e)}), 500
+    except NotUniqueError:
+        # Handle the error
+        print("Article with doi '{}' already exists".format(article.doi))
+        return jsonify({"error": "Article with doi '{}' already exists".format(article.doi)}), 400
 
     except Exception as e:
-        print("Error: ", e)
+        # Roll back the changes
+        print(e)
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/search", methods=["GET"])
 def search():
@@ -81,12 +86,13 @@ def search():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/article/<article_id>", methods=["GET"])
-def get_article(article_id):
+@app.route("/article", methods=["GET"])
+def get_article():
     try:
+        article_id = request.args.get("doi")
         if not article_id:
             return jsonify({"error": "article id is missing"}), 400
-        article = Article.objects.get(id=article_id)
+        article = Article.objects.get(doi=article_id)
         return article.to_json(), 200, { 'Content-Type': 'application/json' }
     except DoesNotExist as e:
         return jsonify({"error": "Article not found"}), 404
