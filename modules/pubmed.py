@@ -5,7 +5,7 @@ import pandas as pd
 import nltk
 from pprint import pprint
 import re
-from transformers import pipeline
+# from transformers import pipeline
 import requests
 from mongoengine import connect
 from mongoengine.errors import NotUniqueError
